@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body style="background-color: gray;">
+    <h2 style="margin-left : 750px">Login</h2>
+    <form id="loginForm" style="margin: 50px 750px">
+        <input type="email" id="email" placeholder="Email" required><br>
+        <input type="password" id="password" placeholder="Password" required><br>
+        <button type="submit">Login</button>
+    </form>
+
+    <div style="margin-left : 750px">
+        <input type="text" id="todoTitle" placeholder="Your task..." required>
+        <button id="addTodoBtn">Add Todo</button>
+    </div>
+    <br>
+
+    <button id="logoutBtn" style="margin-left: 750px; margin-bottom : 20px">Logout</button>
+    <br>
+    <button id="getTodosBtn" style="margin-left : 750px">Get My Todos</button>
+    <p class="username-container" style="margin-left: 750px;"></p>
+    <ul style="margin-left: 750px;" class="container"></ul>
+    <script>
+
+        // form login ---------------------------------------------------
+        const form = document.getElementById("loginForm");
+        form.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('http://localhost:3000/auth/login', {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('token', data.token);
+                document.getElementById('email').value = "";
+                document.getElementById('password').value = "";
+                alert('Login successful!');
+            } else {
+                alert(data.message || 'Login failed.');
+            }
+        })
+        // ----------------------------------------------------------------------
+
+
+        // get to do list -------------------------------------------------------
+        const toDoBtn = document.getElementById('getTodosBtn');
+        toDoBtn.addEventListener("click", async function(){
+            const token = localStorage.getItem('token');
+            if(!token){
+                alert("you are not logged in!");
+            }
+
+            const response = await fetch('http://localhost:3000/tasks/todos', {
+                method: "GET",
+                headers: {
+                    'Content-Type' : 'application/json',
+                    'authorization' : 'Bearer ' + token
+                }
+            })
+
+            const data = await response.json();
+            if(response.ok){
+                
+                const {username, toDoList} = data;
+                console.log(toDoList);
+                
+                const container = document.querySelector('.container');
+                const p = document.querySelector('.username-container');
+                p.innerText = `To do của ${username}`
+                container.innerHTML = (toDoList.map(todo => {
+                    // console.log(todo);
+                    return `<li data-id=${todo._id}>${todo.title}
+                            <div>
+                                <button id="edit-btn">Chỉnh sửa</button>
+                                <button id="delete-btn">Xóa</button>
+                            </div>
+                        </li>`
+                }).join(''));
+            }else{
+                alert("something went wrong")
+            }
+        })
+
+        // --------------------------------------------------------------------------
+
+        // log out option -----------------------------------------------------------
+        document.getElementById("logoutBtn").addEventListener("click", () => {
+            localStorage.removeItem("token"); 
+            alert("Logged out!");
+            window.location.reload(); 
+        });
+        // --------------------------------------------------------------------------
+
+        // add todo item ------------------------------------------------------------
+        const addBtn = document.getElementById('addTodoBtn');
+        const titleField = document.getElementById('todoTitle');
+        addBtn.addEventListener('click', async function(){
+            const title = titleField.value;
+            titleField.value = "";
+            const token = localStorage.getItem('token');
+            if(!title.length) alert("Nhập cho đúng vô !");
+            else{
+                const response = await fetch('http://localhost:3000/tasks', {
+                    method: "POST",
+                    headers: {
+                        'Content-Type' : 'application/json',
+                        'authorization' : 'Bearer ' + token
+                        },
+                    body: JSON.stringify({title})
+                })
+
+                const data = await response.json();
+                alert("Thêm todo thành công!");
+                window.location.reload();
+                console.log("todo vừa thêm : ", data);
+            }
+        })
+        // ---------------------------------------------------------------------------
+
+        // edit todo -----------------------------------------------------------------
+        const container = document.querySelector('.container');
+        const token = localStorage.getItem('token');
+        container.addEventListener("click", async function(e){
+            const checked = e.target.getAttribute('id') === 'edit-btn';
+            if(checked){
+                // get todo id
+                const parentElement = e.target.parentElement.parentElement
+                const todoId = parentElement.dataset.id;
+                const changedValue = prompt("Nhập vào todo mới : ");
+                const response = await fetch(`http://localhost:3000/tasks/${todoId}`, {
+                    method: "PUT",
+                    headers: {
+                        'Content-Type' : 'application/json',
+                        'authorization' : 'Bearer ' + token
+                        },
+                    body: JSON.stringify({title : changedValue})
+                })
+
+                const data = await response.json();
+                window.location.reload(); 
+                parentElement.innerText = data;
+                alert("Chỉnh sửa thành công !");
+            }
+        })
+        // ---------------------------------------------------------------------------
+        container.addEventListener("click", async function(e){
+            const checked = e.target.getAttribute('id') === 'delete-btn';
+            if(checked){
+                // get todo id
+                const parentElement = e.target.parentElement.parentElement
+                const todoId = parentElement.dataset.id;
+                const response = await fetch(`http://localhost:3000/tasks/${todoId}`, {
+                    method: "DELETE",
+                    headers: {
+                        'Content-Type' : 'application/json',
+                        'authorization' : 'Bearer ' + token
+                        },
+                })
+
+                if(response.ok){
+                    alert("Xóa todo thành công !");
+                    window.location.reload();
+                }
+            }
+        })
+
+
+        // ---------------------------------------------------------------------------
+    </script>
+</body>
+
+</html>

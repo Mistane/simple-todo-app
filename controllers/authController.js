@@ -8,12 +8,16 @@ class AuthController{
     async register(req, res, next){
         const {username, email, password} = req.body;
        
-        const hashedPassword = await bcrypt.hash(password, salt);
-        await User.create({
-            username,
-            email,
-            password : hashedPassword
-        })
+        // const hashedPassword = await bcrypt.hash(password, salt);
+        // await User.create({
+        //     username,
+        //     email,
+        //     password : hashedPassword
+        // })
+        // res.json({message : "Register done!"});
+
+        const user = new User({ username, email, password });
+        await user.save(); // this triggers the pre('save') and hashes the password
         res.json({message : "Register done!"});
     }
 
@@ -25,8 +29,9 @@ class AuthController{
             return res.status(401).json({messagse : "invalid email"});
         }
 
-        
+    
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
+        
         if (!isPasswordCorrect) {
             return res.status(401).json({ message: "Wrong email or password" });
         }
